@@ -1,0 +1,12 @@
+Package: ChameleoK
+Title: ChameleoK
+Version: 0.0.0.9000
+Authors@R: 
+    person("Julian", "Sengewald", , "julian.sengewald@tu-dortmund.de", role = c("aut", "cre"))
+Description: Implementation of algorithms to achieve k-anonymity in datasets
+    for protection against identity disclosure. Provides tools for working with 
+    hierarchies used to generalize data through various anonymization methods.
+License: `use_mit_license()`
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2

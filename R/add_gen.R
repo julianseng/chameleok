@@ -1,8 +1,10 @@
 #' Add Generalization Relationship to Hierarchy
 #'
 #' This function adds a generalization relationship to a given hierarchy. 
-#' It assigns a parent node to a specified node in the hierarchy.
-#'
+#' The function modifies the hierarchy list by adding a new 'to' entry for the `from` node.
+#' It is typically used internal to the package for managing hierarchical structures when importing a structure from excel.
+#' Manual creation/extension of the hierarchy is also possible.
+#' 
 #' @param from A character or numeric value indicating the node to be generalized.
 #' @param to A character or numeric value indicating the parent node to which the `from` node will be generalized.
 #' @param hierachy A list representing the current hierarchy structure.

@@ -2,8 +2,11 @@
 
 export(add_gen)
 export(built_hierachy_from_dataframe)
+export(compute_min_size_of_equivalence_class)
 export(core_datafly)
+export(isKAnonymous)
 export(plot_hierarchy)
+export(read_hierachy_from_csv)
 export(traverse_hierachy)
 importFrom(igraph,E)
 importFrom(igraph,V)

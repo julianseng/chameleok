@@ -1,7 +1,7 @@
 #' Datafly algorithm for k-anonymity
-#' 
-#' The datafly algorithm uses generalization and suppression to achieve k-anonymity.
 #'
+#' The datafly algorithm uses generalization and suppression to achieve k-anonymity.
+#' Sweeney, L. (1998). Datafly: A system for providing anonymity in medical data. Database Security XI: Status and Prospects, 356-381.
 #' @param data A data frame containing the quasi-identifiers and sensitive attributes.
 #' @param test_data A data frame containing the quasi-identifiers and sensitive attributes for testing.
 #' @param quid A list of column names representing the quasi-identifiers.
@@ -9,19 +9,20 @@
 #' @param gen_try The maximum number of generalization attempts.
 #' @param taxonomy A list representing the current hierarchy structure.
 #' @return A list containing the training and testing data frames with k-anonymity applied.
-#' 
-#' @export  
+#'
+#'
+#' @export
 
 core_datafly <- function(data, test_data, quid, k=5, gen_try=20, taxonomy){
   if(!is.null(quid)){
-    n_old <- nrow(data) 
+    n_old <- nrow(data)
     data[,quid] <- lapply(data[,quid], function(x) if(!is.factor(x)){return(as.factor(x))}else{return(x)})
     if(!is.null(test_data)){
     test_data[,quid] <- lapply(test_data[,quid], function(x) if(!is.factor(x)){return(as.factor(x))}else{return(x)})
     }
     runAgain <- TRUE
     iter <- 0
-    while(runAgain) { 
+    while(runAgain) {
       runAgain <- FALSE
       iter <- iter + 1
       freq_tab <- as.data.frame(table(data[,quid]))
@@ -39,7 +40,7 @@ core_datafly <- function(data, test_data, quid, k=5, gen_try=20, taxonomy){
           data[data$freq<k,quid_affected] <- length(old_levels) + 1
           new_levels <- c(old_levels,"*")
           new_levels <- new_levels[sort(unique(data[,quid_affected]))]
-          data[,quid_affected] <- factor(data[,quid_affected], labels = new_levels) 
+          data[,quid_affected] <- factor(data[,quid_affected], labels = new_levels)
           data[,"freq"] <- NULL
           return(data)
         }
@@ -59,7 +60,7 @@ core_datafly <- function(data, test_data, quid, k=5, gen_try=20, taxonomy){
         #generalize
         for(i in 1:nrow(freq_tab)){
           quid_max <- names(which.max(sapply(data[,quid], function(x) length(unique(x))))) # location of (first) max
-          child <- freq_tab[i, quid_max] 
+          child <- freq_tab[i, quid_max]
           hierarchy <- taxonomy[[quid_max]]
           data[,quid_max] <- traverse_hierachy(children = child, attribute=data[,quid_max], hierarchy)
           if(!is.null(test_data)){
@@ -69,7 +70,7 @@ core_datafly <- function(data, test_data, quid, k=5, gen_try=20, taxonomy){
         }
       } # for loop
       else{
-        runAgain <- FALSE   # k holds     
+        runAgain <- FALSE   # k holds
       }
       n_old <- NROW(freq_tab)
     } # end while loop
@@ -81,5 +82,5 @@ core_datafly <- function(data, test_data, quid, k=5, gen_try=20, taxonomy){
     }else{
       return(data)
     }
-  }        
+  }
 }

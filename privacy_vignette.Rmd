@@ -1,5 +1,5 @@
 ---
-title: "ChameleoK"
+title: "ChameleoK: K-anonymity in R"
 author: "Julian Sengewald"
 date: "`r Sys.Date()`"
 output:
@@ -12,20 +12,47 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-Functions for working with microdata so that it can be anonymized using the k-anonymity model.
-
 ![logo](logo.png)
+
+# A consice introduction to privacy
+## Understanding k-anonymity
+
+K-anonymity is a privacy model designed to protect against identification of individuals in published data. The key concepts are:
+
+- **Data Classification**: Data attributes are categorized as direct identifiers (DI), quasi-identifiers (QID), privacy-protected attributes (PA), and non-privacy-protected attributes (NP).
+
+- **Direct Identifiers**: These uniquely identify individuals (e.g., names) and are typically removed entirely or should be at least replaced by non-meaningfull ids.
+
+- **Quasi-identifiers (quid)**: These identifiers can identify individuals only when combined with other attributes (e.g., age, gender, zip code). Quais-identifier as a collection of attributes identifies individuals. The attack works by singeling out individuals with public available or observable information. For example, your neighbor might have a good guess about your age, knows your gender and has the same zip code. 
+With this knowledge a individual can be identified in a dataset. Sometimes it is also enough knowing that a person has participated in a survey e.g. when zip code is not included in the disseminated data.
+Removing these attributes would result in a loss of valuable information.
+
+The K-anonymity privacy model trades-off some of the forementioned loss of information about quasi-identifiers with a reduction of the risk of re-identification.
+The idea is to modify quid so that each combination of quasi-identifiers appears at least k times in the dataset, forming "equivalence classes" of at least k records. 
+This is achieved through generalization (making data values less specific) until the k-anonymity requirement is met.
+As k increases, the identification risk decreases proportionally to 1/k. So higher values of k provide stronger privacy protection but also lead to more data loss.
+
+Important: While k-anonymity protects against identity disclosure, it may not fully protect against attribute disclosure, as sensitive information might still be inferred within equivalence classes. 
+More advanced models like t-closeness and differential privacy address some of these limitations for comprehensive privacy protection. 
+So k-anonymity is not the end of the story. But it still usefull for many applications.
+
 
 ## Quick Guide!
 
-The generalization hierarchy can be manually specified or imported from a csv file (example follows). 
-The hierarchy is a named list that specifies child and parent in the hierarchy.
+The package implements the core datafly algorithm, which is one method for anonymizing data.
+The algorithm works by generalizing the data in such a way that it becomes k-anonymous, meaning that each record in the dataset is indistinguishable from at least k-1 other records.
+It is a privacy-preserving technique that helps protect against re-identification of individuals in the dataset.
+
 
 ```{r}
+#| echo: false
 library(devtools)
 # cd to the directory where the package is located
 # install the package
 install()
+```
+
+```{r}
 library(ChameleoK)
 library(dplyr)
 
@@ -36,19 +63,64 @@ adult <- read.table('https://archive.ics.uci.edu/ml/machine-learning-databases/a
                     sep = ',', fill = F, strip.white = T)
 colnames(adult) <- c('age', 'workclass', 'fnlwgt', 'educatoin', 
                      'educatoin_num', 'marital_status', 'occupation', 'relationship', 'race', 'sex', 
-                     'capital_gain', 'capital_loss', 'hours_per_week', 'native_country', 'income')
+                     'capital_gain', 'capital_loss', 'hours_per_week', 'nativecountry', 'income')
+nrow(adult) # 48842
+ncol(adult) # 15
+```
 
+Investigate the dataset and its attributes. The dataset contains 15 attributes, including both quasi-identifiers and sensitive attributes. 
+
+Glancing at the data, we can see that the dataset is not k-anonymous. For example, the combination of age and sex at the moment uniquely identifies some individuals (e.g. single person can be identified).
+The function `isKAnonymous` checks if the dataset is k-anonymous for a set of quid, which is convenient if there are many of them.
+
+
+```{r}
+table(adult$age, adult$sex) %>% tail() # clearly not k-anonymous
+isKAnonymous(data = adult, quid = c("sex", "age", "race"), k=50) # package function
+```
+
+Generalization is the process of replacing specific values with more general ones. For example, instead of using exact ages, we can group ages into ranges (e.g., 20-30, 30-40). 
+With categorical attributes, one can proceed similarly by replacing specific values with broader categories (e.g., "California" can be replaced with "USA").
+
+The hierarchy can be visualized using the `plot_hierarchy` function.
+```{r}
+#---
+# Example of a hierarchy
+#---
+food <- list()
+food <- add_gen("cherry", "berries", food)
+food <- add_gen("blueberry", "berries", food)
+food <- add_gen("strawberry", "berries", food)
+food <- add_gen("apple", "fruit", food)
+food <- add_gen("berries", "fruit", food)
+hierarchy <- list()
+hierarchy[["food"]] <- food
+plot_hierarchy(hierarchy, "food")
+```
+
+
+Currently, the package supports two types of creating hierarchies for the quasi-identifiers (quid) in the dataset: import from a CSV file or manually creating the hierarchy (as above).
+
+For the csv import, the hierachy has to be specified - obviously - in a CSV file outside of R with two columns: `parent` and `child`. 
+The `parent` column contains the parent category, and the `child` column contains the child category. Skip connection are also possible if one generalization level is not enough to reach k-anonymity (see examples). 
+
+
+```{r}
 # ---
 # Importing the hierarchy from a csv file
 # ---
+taxonomy_adult <- read_hierachy_from_csv(path = "./hierachy/adult/")
+par(mfrow=c(1,2))
+plot_hierarchy(taxonomy_adult, "nativecountry")
+plot_hierarchy(taxonomy_adult, "age")
+```
 
-taxonomy_adult <- read_hierachy_from_csv("/hierachy/adult/", sep = ";")
-plot_taxonomy(taxonomy_adult, "age")
+Manually creating the hierarchy is also possible. The function `create_hierarchy` creates a hierarchy for the categorical attributes.
 
-table(adult$age, adult$sex) %>% tail() # clearly not k-anonymous
-isKAnonymous(data = adult, quid = c("sex", "age", "race"), k=50)
+The package implements the core datafly algorithm, which is one feasible method for anonymizing data. 
 
-
+The syntax is as follows:
+```{r}
 train_index <- sample(1:nrow(adult), nrow(adult)*0.8)
 train_adult <- adult[train_index,]
 test_adult <- adult[-train_index,]
@@ -59,3 +131,8 @@ table(ano_data$training$sex, ano_data$training$age)
 isKAnonymous(data = ano_data$training, quid = c("sex", "age", "race"), k=50)
 ```
 
+The * means that some quids are in the combination so unique that those categories of the attribute needs to be excluded from the further anonymization process. 
+
+# References
+Sweeney, L. (2002). k-anonymity: A model for protecting privacy. International journal of uncertainty, fuzziness and knowledge-based systems, 10(05), 557-570.
+Sweeney, L. (1998). Datafly: A system for providing anonymity in medical data. Database Security XI: Status and Prospects, 356-381.
